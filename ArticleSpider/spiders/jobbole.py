@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+import datetime
 
 import scrapy
 from scrapy import Request
 from urllib import parse
-from ..items import JobboleArticleItem
+from ..items import JobboleArticleItem,ArticleItemLoader
 from ..utils.common import getMd5
+from scrapy.loader import ItemLoader
+
 
 class JobboleSpider(scrapy.Spider):
     name = "jobbole"
@@ -29,26 +32,47 @@ class JobboleSpider(scrapy.Spider):
 
     def parse_detail(self,response):
         imgurl=response.meta['imgurl']
-        title=response.xpath('//div[@class="entry-header"]/h1/text()').extract_first('').strip()
-        createDate = response.xpath('//p[@class="entry-meta-hide-on-mobile"]/text()').extract_first('').replace('·','').strip()
-        praiseNum = response.xpath('//span[contains(@class,"vote-post-up")]/h10/text()').extract_first('')
-        collectNum=response.xpath('//span[contains(@class,"bookmark-btn")]/text()').extract_first('').replace('收藏','').strip()
-        commentNum=response.xpath('//span[contains(@class,"hide-on-480")]/text()').extract_first('').replace('评论','').strip()
-        content=response.xpath('//div[@class="entry"]').extract_first('')
-        tagsList=response.xpath('//p[@class="entry-meta-hide-on-mobile"]/a/text()').extract()
-        tags=','.join([x for x in tagsList if not x.strip().endswith('评论')])
+        #普通方式解析保存item
+        # title=response.xpath('//div[@class="entry-header"]/h1/text()').extract_first('').strip()
+        # createDate = response.xpath('//p[@class="entry-meta-hide-on-mobile"]/text()').extract_first('').replace('·','').strip()
+        # praiseNum = response.xpath('//span[contains(@class,"vote-post-up")]/h10/text()').extract_first('')
+        # collectNum=response.xpath('//span[contains(@class,"bookmark-btn")]/text()').extract_first('').replace('收藏','').strip()
+        # commentNum=response.xpath('//span[contains(@class,"hide-on-480")]/text()').extract_first('').replace('评论','').strip()
+        # content=response.xpath('//div[@class="entry"]').extract_first('')
+        # tagsList=response.xpath('//p[@class="entry-meta-hide-on-mobile"]/a/text()').extract()
+        # tags=','.join([x for x in tagsList if not x.strip().endswith('评论')])
+        #
+        # item=JobboleArticleItem()
+        #
+        # item['title']=title
+        # item['url']=response.url
+        # item['urlmd5']=getMd5(response.url)
+        # try:
+        #     createDate=datetime.datetime.strptime(createDate,'%Y/%m/%d')
+        # except:
+        #     createDate=datetime.datetime.today()
+        # item['createDate']=createDate
+        # item['imgurl']=[imgurl]
+        # item['praiseNum']=praiseNum
+        # item['collectNum']=collectNum
+        # item['commentNum']=commentNum
+        # item['content']=content
+        # item['tags']=tags
 
-        item=JobboleArticleItem()
+        #通过itemloader加载item
+        itemld=ArticleItemLoader(item=JobboleArticleItem(),response=response)
 
-        item['title']=title
-        item['url']=response.url
-        item['urlmd5']=getMd5(response.url)
-        item['createDate']=createDate
-        item['imgurl']=[imgurl]
-        item['praiseNum']=praiseNum
-        item['collectNum']=collectNum
-        item['commentNum']=commentNum
-        item['content']=content
-        item['tags']=tags
+        itemld.add_xpath('title','//div[@class="entry-header"]/h1/text()')
+        itemld.add_value('url',response.url)
+        itemld.add_value('urlmd5',getMd5(response.url))
+        itemld.add_xpath('createDate','//p[@class="entry-meta-hide-on-mobile"]/text()')
+        itemld.add_value('imgurl',imgurl)
+        itemld.add_xpath('praiseNum','//span[contains(@class,"vote-post-up")]/h10/text()')
+        itemld.add_xpath('collectNum','//span[contains(@class,"bookmark-btn")]/text()')
+        itemld.add_xpath('commentNum','//span[contains(@class,"hide-on-480")]/text()')
+        itemld.add_xpath('tags','//p[@class="entry-meta-hide-on-mobile"]/a/text()')
+        itemld.add_xpath('content','//div[@class="entry"]')
+
+        item=itemld.load_item()
 
         yield item

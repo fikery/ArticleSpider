@@ -67,14 +67,23 @@ ROBOTSTXT_OBEY = False
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
    'ArticleSpider.pipelines.ArticlespiderPipeline': 300,
-    'ArticleSpider.pipelines.ArticleImagePipeline':200,
-    'ArticleSpider.pipelines.JsonWithEncodingPipeline':500,
-    'ArticleSpider.pipelines.JsonExporterPipeline':600,
+    # 'ArticleSpider.pipelines.ArticleImagePipeline':200,
+    # 'ArticleSpider.pipelines.JsonWithEncodingPipeline':500,
+    # 'ArticleSpider.pipelines.JsonExporterPipeline':600,
+    # 'ArticleSpider.pipelines.MongodbPipeline':800,
+    'ArticleSpider.pipelines.MssqlPipeline':800,
 }
 IMAGES_URLS_FIELD='imgurl'
 projectdir=os.path.abspath(os.path.dirname(__file__))
 IMAGES_STORE=os.path.join(projectdir,'images')
-
+#mongodb数据库配置信息
+MONGO_URI='localhost'
+MONGO_DB='articleSpider'
+#mysql/mssql数据库配置信息
+SQL_HOST='localhost'
+SQL_USER='sa'
+SQL_PASSWORD='1'
+SQL_DBNAME='mydb'
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
 #AUTOTHROTTLE_ENABLED = True
