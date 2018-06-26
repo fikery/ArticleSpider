@@ -1,3 +1,7 @@
+'''
+比较奇怪，将登陆的cookie保存下来然后加载登陆，可以正常获取登陆后的页面内容，
+但是直接登陆完成后，访问登陆后页面，是失败的，弹出登陆界面
+'''
 import base64
 import hmac
 import json
@@ -17,10 +21,10 @@ headers={
 }
 session=requests.session()
 session.cookies=cookielib.LWPCookieJar(filename='cookie.txt')
-# try:
-#     session.cookies.load(ignore_discard=True)
-# except:
-#     print('cookie未能加载')
+try:
+    session.cookies.load(ignore_discard=True)
+except:
+    print('cookie未能加载')
 
 def get_xsrf_dc0():
     geturl='https://www.zhihu.com/signup'
@@ -32,16 +36,22 @@ def getCaptcha():
     response=session.get(url=geturl,headers=headers)
     rescap=response.text
     if 'false' in rescap:
-        pass
         return ''
     else:
-        showCaptcha=json.loads(rescap)['img_base64']
-        with open('captcha.jpg','wb') as f:
-            f.write(base64.b64decode(showCaptcha))
-        img=Image.open('captcha.jpg')
+        result=session.put(url=geturl,headers=headers)
+        try:
+            img = json.loads(result.text)['img_base64']
+        except:
+            print('获取img_base64的值失败！')
+        else:
+            img = img.encode('utf8')
+            img_data = base64.b64decode(img)
+            with open('zhihu.jpg', 'wb') as f:
+                f.write(img_data)
+        img = Image.open('zhihu.jpg')
         img.show()
-        # img.close()
-        captcha=input('请输入验证码:')
+        img.close()
+        captcha = input('请输入验证码：')
         session.post(url=geturl,data={'input_text':captcha},headers=headers)
         return captcha
 
@@ -75,16 +85,12 @@ def login(name,psd):
         'ref_source':'other_',
         'utm_source':''
     }
+    headers.update({'accept': 'application/json, text/plain, */*'})
     response=session.post(url=postUrl,data=postData,headers=headers)
     if response.status_code==201:
         session.cookies.save()
-        print('登陆成功')
     else:
         print('登录失败')
-
-def getData():
-    #完成登陆后获取信息
-    pass
 
 def isLogin():
     #检查是否登陆
@@ -92,10 +98,12 @@ def isLogin():
     response=session.get(url=settingurl,headers=headers,allow_redirects=False)
     if response.status_code==200:
         print('已登陆')
-        return True
     else:
-        print('现在尝试登陆...')
-        login('+8618637658720','LYBabc110119120')
+        q=input('是否尝试自动登陆y/n:')
+        if q=='y':
+            login('+8618637658720','LYBabc110119120')
+        else:
+            print('关闭登陆')
 
 # print(get_xsrf_dc0())
 # getCaptcha()

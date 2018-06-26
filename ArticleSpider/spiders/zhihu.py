@@ -2,11 +2,13 @@
 import base64
 import json
 import time
-import requests
+
+import re
 import scrapy
 from PIL import Image
-from ArticleSpider.utils.common import getSignature
+from scrapy import Request,FormRequest
 
+from ArticleSpider.utils.common import getSignature
 
 class ZhihuSpider(scrapy.Spider):
     name = 'zhihu'
@@ -18,49 +20,39 @@ class ZhihuSpider(scrapy.Spider):
         'origin': 'https://www.zhihu.com',
         'authorization': 'oauth c3cef7c66a1843f8b3a9e6a1e3160e20',
     }
-    session=requests.session()
 
 
     def parse(self, response):
-        print('success')
+        if '注册' in response.text:
+            print('登陆失败')
+        else:
+            print('登陆成功')
         pass
 
     def start_requests(self):
+        #访问登陆界面，获取xsrf
         geturl='https://www.zhihu.com/signup'
-        return [scrapy.Request(url=geturl,headers=self.headers, callback=self.login)]
+        return [Request(url=geturl,headers=self.headers, callback=self.getxsrf)]
 
-    def getxsrf(self):
-        geturl = 'https://www.zhihu.com/signup'
-        response = self.session.get(url=geturl, headers=self.headers)
-        return response.cookies['_xsrf']
-
-    def getCaptcha(self):
-        geturl = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=en'
-        response = self.session.get(url=geturl, headers=self.headers)
-        rescap = response.text
-        if 'false' in rescap:
-            return ''
-        else:
-            showCaptcha = json.loads(rescap)['img_base64']
-            with open('captcha.jpg', 'wb') as f:
-                f.write(base64.b64decode(showCaptcha))
-            img = Image.open('captcha.jpg')
-            img.show()
-            # img.close()
-            captcha = input('请输入验证码:')
-            self.session.post(url=geturl, data={'input_text': captcha}, headers=self.headers)
-            return captcha
+    def getxsrf(self,response):
+        #提取xsrf
+        cookie=response.headers.getlist('Set-Cookie')#获取响应cookie
+        # cookie2 = response.request.headers.getlist('Cookie')#获取请求cookie
+        xsrf=re.findall(r'xsrf=(.*?);',str(cookie))[0]
+        captchaurl = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=en'
+        return [Request(url=captchaurl,meta={'xsrf':xsrf},headers=self.headers,callback=self.login)]
 
     def login(self,response):
-        account='18637658720'
-        password='LYBabc110119120'
+        xsrf=response.meta['xsrf']
+        rescap = response.text
+        self.headers.update({'x-xsrftoken': xsrf})
+        loginurl='https://www.zhihu.com/api/v3/oauth/sign_in'
+        account = '18637658720'
+        password = 'LYBabc110119120'
         # account=input('输入邮箱/手机号:')
         # password=input('输入密码:')
-        posturl = 'https://www.zhihu.com/api/v3/oauth/sign_in'
-        xsrf=self.getxsrf()
-        self.headers.update({'x-xsrftoken': xsrf})
-        strtime=str(int((time.time() * 1000)))
-        postData={
+        strtime = str(int((time.time() * 1000)))
+        postData = {
             'timestamp': strtime,
             'signature': getSignature(strtime),
             'client_id': 'c3cef7c66a1843f8b3a9e6a1e3160e20',
@@ -68,14 +60,73 @@ class ZhihuSpider(scrapy.Spider):
             'password': password,
             'grant_type': 'password',
             'source': 'com.zhihu.web',
-            'captcha': self.getCaptcha(),
+            'captcha': '',
             'lang': 'en',
             'ref_source': 'other_',
             'utm_source': ''
         }
-        response = self.session.post(url=posturl, data=postData, headers=self.headers)
-        if response.status_code == 201:
-            print('登陆成功')
-            yield scrapy.Request(url='https://www.zhihu.com/settings/account',headers=self.headers,callback=self.parse)
+        if 'false' in rescap:
+            return [FormRequest(url=loginurl,formdata=postData,headers=self.headers,callback=self.checklogin)]
         else:
-            print('登录失败')
+            #爬取验证码并识别
+            return [scrapy.Request(url=response.url,headers=self.headers,callback=self.getcaptcha,method='PUT')]
+
+    def getcaptcha(self,response):
+        try:
+            img = json.loads(response.body)['img_base64']
+        except ValueError:
+            print('获取img_base64的值失败！')
+        else:
+            img = img.encode('utf8')
+            img_data = base64.b64decode(img)
+            with open('zhihu.jpg', 'wb') as f:
+                f.write(img_data)
+        img=Image.open('zhuhu.jpg')
+        img.show()
+        img.close()
+        captcha = input('请输入验证码：')
+        post_data = {
+            'input_text': captcha
+        }
+        return [scrapy.FormRequest(url = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=en',formdata = post_data,callback = self.captcha_login,headers = self.headers)]
+
+    def captcha_login(self, response):
+        try:
+            cap_result = json.loads(response.body)['success']
+            print(cap_result)
+        except ValueError:
+            print('关于验证码的POST请求响应失败!')
+        else:
+            if cap_result:
+                print('验证成功!')
+        post_url = 'https://www.zhihu.com/api/v3/oauth/sign_in'
+        account = '18637658720'
+        password = 'LYBabc110119120'
+        # account=input('输入邮箱/手机号:')
+        # password=input('输入密码:')
+        strtime = str(int((time.time() * 1000)))
+        post_data = {
+        'timestamp': strtime,
+            'signature': getSignature(strtime),
+            'client_id': 'c3cef7c66a1843f8b3a9e6a1e3160e20',
+            'username': account,
+            'password': password,
+            'grant_type': 'password',
+            'source': 'com.zhihu.web',
+            'captcha': '',
+            'lang': 'en',
+            'ref_source': 'other_',
+            'utm_source': ''
+        }
+        self.headers.update({
+            'Origin': 'https://www.zhihu.com',
+            'Pragma': 'no - cache',
+            'Cache-Control': 'no - cache'
+        })
+        return [scrapy.FormRequest(url=post_url,formdata=post_data,headers=self.headers,callback=self.checklogin)]
+
+    def checklogin(self,response):
+        if response.status==201:
+            return Request(url='https://www.zhihu.com/#signin',headers=self.headers)
+            # for url in self.start_urls:
+            #     yield scrapy.Request(url, dont_filter=True, headers=self.headers,callback=self.parse)

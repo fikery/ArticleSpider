@@ -5,7 +5,8 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 from scrapy.pipelines.images import ImagesPipeline
-import codecs,json,pymongo,pymssql
+import codecs,json,pymongo
+# import pymssql
 from scrapy.exporters import JsonItemExporter
 from twisted.enterprise import adbapi
 #异步插入mysql数据库
@@ -91,8 +92,8 @@ class MssqlPipeline(object):
             database=settings['SQL_DBNAME'],
             charset='utf8',
         )
-        conn=pymssql.connect(**dbparms)
-        return cls(conn)
+        # conn=pymssql.connect(**dbparms)
+        # return cls(conn)
 
     def process_item(self, item, spider):
         #插入操作，基本上只需要修改这个地方，包括进行重复插入检查，异常处理

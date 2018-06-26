@@ -71,7 +71,7 @@ ITEM_PIPELINES = {
     # 'ArticleSpider.pipelines.JsonWithEncodingPipeline':500,
     # 'ArticleSpider.pipelines.JsonExporterPipeline':600,
     # 'ArticleSpider.pipelines.MongodbPipeline':800,
-    'ArticleSpider.pipelines.MssqlPipeline':800,
+    # 'ArticleSpider.pipelines.MssqlPipeline':800,
 }
 IMAGES_URLS_FIELD='imgurl'
 projectdir=os.path.abspath(os.path.dirname(__file__))
