@@ -4,9 +4,12 @@ import json
 import time
 
 import re
+
+import os
 import scrapy
 from PIL import Image
 from scrapy import Request, FormRequest
+from scrapy.http.cookies import CookieJar
 
 from ArticleSpider.utils.common import getSignature
 
@@ -16,23 +19,33 @@ class ZhihuSpider(scrapy.Spider):
     allowed_domains = ['www.zhihu.com']
     start_urls = ['http://www.zhihu.com/']
     headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36',
         'referer': 'https://www.zhihu.com/',
         'origin': 'https://www.zhihu.com',
         'authorization': 'oauth c3cef7c66a1843f8b3a9e6a1e3160e20',
     }
+    cookjar=CookieJar()
 
     def parse(self, response):
         if '注册' in response.text:
-            print('登陆失败')
-        else:
-            print('登陆成功')
+            if os.path.exists('cookies.txt'):
+                os.remove('cookies.txt')
+            print('登录失败，请重试')
         pass
 
     def start_requests(self):
-        # 访问登陆界面，获取xsrf
-        geturl = 'https://www.zhihu.com/signup'
-        return [Request(url=geturl, headers=self.headers, callback=self.getxsrf)]
+        if os.path.exists('cookies.txt'):
+            with open('cookies.txt', 'r') as f:
+                cookiejar = f.read()
+                p = re.compile(r'<Cookie (.*?) for .*?>')
+                cookies = re.findall(p, cookiejar)
+                cookies = (cookie.split('=', 1) for cookie in cookies)
+                cookies = dict(cookies)
+            yield Request(url='https://www.zhihu.com/', cookies=cookies,callback=self.parse)
+        else:
+            #访问登陆界面，获取xsrf
+            geturl = 'https://www.zhihu.com/signup'
+            yield Request(url=geturl,meta={'cookiejar': self.cookjar}, headers=self.headers, callback=self.getxsrf)
 
     def getxsrf(self, response):
         # 提取xsrf
@@ -40,7 +53,7 @@ class ZhihuSpider(scrapy.Spider):
         # cookie2 = response.request.headers.getlist('Cookie')#获取请求cookie
         xsrf = re.findall(r'xsrf=(.*?);', str(cookie))[0]
         captchaurl = 'https://www.zhihu.com/api/v3/oauth/captcha?lang=en'
-        return [Request(url=captchaurl, meta={'xsrf': xsrf}, headers=self.headers, callback=self.login)]
+        return [Request(url=captchaurl, meta={'xsrf': xsrf,'cookiejar':response.meta['cookiejar']}, headers=self.headers, callback=self.login)]
 
     def login(self, response):
         xsrf = response.meta['xsrf']
@@ -66,7 +79,7 @@ class ZhihuSpider(scrapy.Spider):
             'utm_source': ''
         }
         if 'false' in rescap:
-            return [FormRequest(url=loginurl, formdata=postData, headers=self.headers, callback=self.checklogin)]
+            return [FormRequest(url=loginurl,meta={'cookiejar': response.meta['cookiejar']}, formdata=postData, headers=self.headers, callback=self.saveCookie)]
         else:
             # 爬取验证码并识别
             return [scrapy.Request(url=response.url, headers=self.headers, callback=self.getcaptcha, method='PUT')]
@@ -81,14 +94,14 @@ class ZhihuSpider(scrapy.Spider):
             img_data = base64.b64decode(img)
             with open('zhihu.jpg', 'wb') as f:
                 f.write(img_data)
-        img = Image.open('zhuhu.jpg')
+        img = Image.open('zhihu.jpg')
         img.show()
         img.close()
         captcha = input('请输入验证码：')
         post_data = {
             'input_text': captcha
         }
-        return [scrapy.FormRequest(url='https://www.zhihu.com/api/v3/oauth/captcha?lang=en', formdata=post_data,
+        return [scrapy.FormRequest(url='https://www.zhihu.com/api/v3/oauth/captcha?lang=en',meta={'cookiejar': response.meta['cookiejar']}, formdata=post_data,
                                    callback=self.captcha_login, headers=self.headers)]
 
     def captcha_login(self, response):
@@ -119,15 +132,20 @@ class ZhihuSpider(scrapy.Spider):
             'ref_source': 'other_',
             'utm_source': ''
         }
-        self.headers.update({
-            'Origin': 'https://www.zhihu.com',
-            'Pragma': 'no - cache',
-            'Cache-Control': 'no - cache'
-        })
-        return [scrapy.FormRequest(url=post_url, formdata=post_data, headers=self.headers, callback=self.checklogin)]
 
-    def checklogin(self, response):
+        return [scrapy.FormRequest(url=post_url,meta={'cookiejar': response.meta['cookiejar']}, formdata=post_data, headers=self.headers, callback=self.saveCookie)]
+
+    def saveCookie(self, response):
         if response.status == 201:
-            return Request(url='https://www.zhihu.com/settings/account', headers=self.headers, dont_filter=True)
-            # for url in self.start_urls:
-            #     yield scrapy.Request(url, dont_filter=True, headers=self.headers,callback=self.parse)
+            self.cookjar.extract_cookies(response, response.request)
+            with open('cookies.txt', 'w') as f:
+                for cookie in self.cookjar:
+                    f.write(str(cookie) + '\n')
+
+            with open('cookies.txt', 'r') as f:
+                cookiejar = f.read()
+                p = re.compile(r'<Cookie (.*?) for .*?>')
+                cookies = re.findall(p, cookiejar)
+                cookies = (cookie.split('=', 1) for cookie in cookies)
+                cookies = dict(cookies)
+            yield Request(url='https://www.zhihu.com/', cookies=cookies,callback=self.parse)
