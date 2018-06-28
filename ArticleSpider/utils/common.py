@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import re
 
 
 def getMd5(url):
@@ -18,6 +19,15 @@ def getSignature(strtime):
     h.update((grant_type + client_id + source + strtime).encode('utf8'))
     return h.hexdigest()
 
+def extractNum(text):
+    #提取数字
+    matchre=re.match('.*?(\d+).*',text)
+    if matchre:
+        num=int(matchre.group(1))
+    else:
+        num=0
+    return num
 
 if __name__=='__main__':
-    print(getMd5('http://sss.com'))
+    # print(getMd5('http://sss.com'))
+    print(extractNum('ste234d'))

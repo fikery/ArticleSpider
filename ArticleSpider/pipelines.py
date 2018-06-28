@@ -103,7 +103,7 @@ class MssqlPipeline(object):
 
         return item
 
-class MssqlTwistedPipeline(object):
+class MysqlTwistedPipeline(object):
     def __init__(self,dbpool):
         self.dbpool=dbpool
 
@@ -118,7 +118,7 @@ class MssqlTwistedPipeline(object):
             cursorclass=pymysql.cursors.DictCursor,
             use_unicode=True
         )
-        dbpool=adbapi.ConnectionPool('pymssql',**dbparms)
+        dbpool=adbapi.ConnectionPool('pymysql',**dbparms)
 
         return cls(dbpool)
 
@@ -133,7 +133,8 @@ class MssqlTwistedPipeline(object):
 
     def do_insert(self,cursor,item):
         #执行插入操作
-        insert_sql = 'insert into jobboleArticle(title,url,urlmd5) values(%s,%s,%s)'
-        cursor.execute(insert_sql,(item['title'],item['url'],item['urlmd5']))
+        # insert_sql = 'insert into jobboleArticle(title,url,urlmd5) values(%s,%s,%s)'
+        # cursor.execute(insert_sql,(item['title'],item['url'],item['urlmd5']))
 
-        return item
+        insert_sql,params=item.get_insert_sql()
+        cursor.execute(insert_sql,params)

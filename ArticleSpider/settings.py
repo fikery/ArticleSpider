@@ -72,6 +72,7 @@ ITEM_PIPELINES = {
     # 'ArticleSpider.pipelines.JsonExporterPipeline':600,
     # 'ArticleSpider.pipelines.MongodbPipeline':800,
     # 'ArticleSpider.pipelines.MssqlPipeline':800,
+   'ArticleSpider.pipelines.MysqlTwistedPipeline': 800,
 }
 IMAGES_URLS_FIELD='imgurl'
 projectdir=os.path.abspath(os.path.dirname(__file__))
@@ -81,9 +82,12 @@ MONGO_URI='localhost'
 MONGO_DB='articleSpider'
 #mysql/mssql数据库配置信息
 SQL_HOST='localhost'
-SQL_USER='sa'
-SQL_PASSWORD='1'
-SQL_DBNAME='mydb'
+SQL_USER='root'
+SQL_PASSWORD='mysqlpassword'
+SQL_DBNAME='articlcspider'
+
+SQL_DATE_FORMAT='%Y-%m-%d'
+SQL_DATETIME_FORMAT='%Y-%m-%d %H:%M:%S'
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
 #AUTOTHROTTLE_ENABLED = True
