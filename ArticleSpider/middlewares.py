@@ -9,6 +9,9 @@ from scrapy import signals
 from scrapy.http import HtmlResponse
 from selenium import webdriver
 import time
+from fake_useragent import UserAgent
+
+from ArticleSpider.tools.crawl_xici_ip import GetIP
 
 
 class ArticlespiderSpiderMiddleware(object):
@@ -57,3 +60,28 @@ class ArticlespiderSpiderMiddleware(object):
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+class RandomUAMiddleware(object):
+    #随机更换UA
+    def __init__(self,crawler):
+        super(RandomUAMiddleware,self).__init__()
+        self.ua=UserAgent()
+        self.ua_type=crawler.settings.get('RANDOM_UA_TYPE','random')
+
+    @classmethod
+    def from_crawler(cls,crawler):
+        return cls(crawler)
+
+    def process_request(self,request,spider):
+        #闭包取得self.ua的self.ua_type值
+        def get_ua():
+            return getattr(self.ua,self.ua_type)
+        #给request加上随机UA
+        request.headers.setdefault('User-Agent',get_ua())
+        # request.meta['proxy']='http://119.5.1.51:808'
+
+class RandomProxyMiddleware(object):
+    #随机更换代理
+    def process_request(self, request, spider):
+        get_ip=GetIP()
+        request.meta['proxy'] = get_ip.getRandomIP()
