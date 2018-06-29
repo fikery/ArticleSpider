@@ -27,11 +27,21 @@ def crawl_ips():
                 ptype=re.findall(r'<td>(HTTPS?)</td>',all_texts)[0]
                 ip_list.append((ip,port,speed,ptype))
         for ip_data in ip_list:
-            cursor.execute(
-                'insert into proxy_ip(ip,port,speed,proxy_type) VALUES(%s,%s,%s,%s)',(
-                    ip_data[0],ip_data[1],ip_data[2],ip_data[3])
-            )
-            conn.commit()
+            # cursor.execute(
+            #     'insert into proxy_ip(ip,port,speed,proxy_type) VALUES(%s,%s,%s,%s)',(
+            #         ip_data[0],ip_data[1],ip_data[2],ip_data[3])
+            # )
+            try:
+                cursor.execute(
+                    'insert into proxy_ip(ip,port,speed,proxy_type) VALUES("{0}","{1}","{2}","{3}")'.format(
+                        ip_data[0], ip_data[1], ip_data[2], ip_data[3]
+                    )
+                )
+                conn.commit()
+                # print('ok')
+            except Exception as e:
+                if 'Duplicate' in str(e):
+                    pass
 
 class GetIP():
     def checkIP(self,ip,port):
@@ -74,6 +84,6 @@ class GetIP():
                 return self.getRandomIP()
 
 if __name__ == '__main__':
-    # crawl_ips()
-    getip=GetIP()
-    print(getip.getRandomIP())
+    crawl_ips()
+    # getip=GetIP()
+    # print(getip.getRandomIP())
