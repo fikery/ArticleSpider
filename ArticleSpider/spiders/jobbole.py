@@ -6,7 +6,10 @@ from scrapy import Request
 from urllib import parse
 from ..items import JobboleArticleItem,ArticleItemLoader
 from ..utils.common import getMd5
-from scrapy.loader import ItemLoader
+
+from selenium import webdriver
+from scrapy.xlib.pydispatch import dispatcher
+from scrapy import signals
 
 
 class JobboleSpider(scrapy.Spider):
@@ -14,7 +17,18 @@ class JobboleSpider(scrapy.Spider):
     allowed_domains = ["blog.jobbole.com"]
     start_urls = ['http://blog.jobbole.com/all-posts/']
 
+    def __init__(self):
+        self.browser=webdriver.Chrome()
+        super(JobboleSpider,self).__init__()
+        dispatcher.connect(self.spider_closed,signals.spider_closed)
+
+    def spider_closed(self,spider):
+        #爬虫退出对时候关闭browser
+        self.browser.quit()
+
+
     def parse(self, response):
+        pass
         '''
         1.获取文章列表页具体文章url并交给解析函数解析详细信息
         2.获取下一页url并下载，重新调用parse函数

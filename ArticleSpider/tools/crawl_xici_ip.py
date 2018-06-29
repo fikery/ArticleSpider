@@ -54,7 +54,7 @@ class GetIP():
         try:
             response=requests.get(http_url,proxies=proxy_dict)
         except:
-            print('无效ip')
+            print('无效ip',ip)
             self.deleteIP(ip)
             return False
         else:
@@ -63,7 +63,7 @@ class GetIP():
                 print('有效ip')
                 return True
             else:
-                print('无效ip')
+                print('无效ip',ip)
                 self.deleteIP(ip)
                 return False
     def deleteIP(self,ip):
