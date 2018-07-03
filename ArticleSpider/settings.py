@@ -54,9 +54,9 @@ ROBOTSTXT_OBEY = False
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-   'ArticleSpider.middlewares.JSPageMiddleware': 500,
-   # 'ArticleSpider.middlewares.RandomProxyMiddleware': 545,
-   # 'ArticleSpider.middlewares.RandomUAMiddleware': 543,
+   # 'ArticleSpider.middlewares.JSPageMiddleware': 500,
+   'ArticleSpider.middlewares.RandomProxyMiddleware': 545,
+   'ArticleSpider.middlewares.RandomUAMiddleware': 543,
    'scrapy.contrib.downloadermiddleware.useragent.UserAgentMiddleware': None,#如果自己写ua中间件，需要覆盖自带的
 
 }
